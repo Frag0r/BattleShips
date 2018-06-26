@@ -17,7 +17,6 @@ public class BattleshipApp extends GameGrid
 {
   private final static String title = "JGameGrid Battleship V2.0";
   protected volatile boolean isMyMove;
-  public boolean vgameplay = false;
   protected String msgMyMove = "Click a cell to fire";
   protected String msgYourMove = "Please wait enemy bomb";
   protected volatile boolean isOver = false;
@@ -29,7 +28,8 @@ public class BattleshipApp extends GameGrid
   private final Color GRAY= java.awt.Color.GRAY;
   private final Color WHITE = java.awt.Color.WHITE;
   private Vokabelspiel vgame;
-  private JDialog fenster;
+  private JDialog menu;
+  private JDialog readyPopUp;
   private JButton knopf;
   private JButton server = new JButton("Server starten");
   private JButton client = new JButton("Als Client starten");
@@ -39,8 +39,8 @@ public class BattleshipApp extends GameGrid
   public int turnnumber = 0;
   public String hits = "0";
   public int hitnumber = 0;
+  public int casualties = 0;
   Font font = new Font("Serif", Font.BOLD, 18);
-  public int vgameplayround=0;
   int score = 0, points = 0, bonus = 0;
   Ship[] fleet;
   Airforce[] airborne;
@@ -53,7 +53,7 @@ public class BattleshipApp extends GameGrid
 	    super(21, 20, 30, Color.black, null, false, 4);  // Only 4 rotated sprites
 	    // setCellSize(40);
 	     Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
-	     ulx = (dim.width - getWidth()) / 2 - 400;
+	     ulx = (dim.width - getWidth()) / 2 - 300;
 	     uly = (dim.height - getHeight()) / 2;
 	     setTitle(title);
 	     setBgColor(Color.blue);
@@ -129,10 +129,11 @@ public class BattleshipApp extends GameGrid
       fleet[i].show(0);
       fleet[i].setMouseEnabled(false);
     }
-   /* int[] data = new int[1];
-    data[0] = 4;
-    receiveDataBlock(data);*/
     mainMenue();
+    /*vgame = new Vokabelspiel(ulx,uly);
+    int data[] = new int[1];
+    data[0] = 10;
+    receiveDataBlock(data);*/
     addExitListener(this);
     addMouseListener(this, GGMouse.lPress);
   }
@@ -141,34 +142,35 @@ public class BattleshipApp extends GameGrid
 	  int data[] = new int[1];  
 	  if(e.getSource() == knopf)
 	  {
-	     if(Vokabelspiel.Go) {
+	     if(vgame.Go) {
+	    	 System.out.println("actionPerformed go=true, sende data=2");
 			 data[0] = 2;
 			 bp.sendDataBlock(data);
-			 fenster.dispose();
-			 data[0] = vgame.play();
-			 bp.sendDataBlock(data);
+			 readyPopUp.dispose();
+			 vgame.play();
 		  }
 		  else {
+		  System.out.println("actionPerformed go=true,sende data[0]=10");
 		  data[0] = 10;
           knopf.setText("Warte auf Ready-up");
-          Vokabelspiel.Go = true;
+          vgame.Go = true;
           bp.sendDataBlock(data);
 		  }
       } 
-	  if(e.getSource() == exit) {
+	  else if(e.getSource() == exit) {
 		  System.exit(0);
 	  }
-	  if(e.getSource() == server) {
-		  fenster.dispose();
-		  connect();  // Blocks until connected
+	  else if(e.getSource() == server) {
+		  menu.dispose();
+		  connect(false);  // Blocks until connected
 
 	  }
-	  if(e.getSource() == client) {
-		  fenster.dispose();
-		  connect();  // Blocks until connected
+	  else if(e.getSource() == client) {
+		  menu.dispose();
+		  connect(true);  // Blocks until connected
 	  }
-	  if(e.getSource() == sprache) {
-		Vokabelspiel.menu();  
+	  else if(e.getSource() == sprache) {
+		  Vokabelspiel.menu();  
 	  }
 	}
   
@@ -184,15 +186,10 @@ public class BattleshipApp extends GameGrid
 		    bp.sendDataBlock(data);
 		    return false;
 			}
-			if (currentLoc.y < 10) {
+			if (currentLoc.y > 10) {
 				return false;
 			}
-			return true;
-  }
-  
-  void kamikazeClicked(GGButton kamikaze) 
-  {
-	  
+			return false;
   }
 
   protected void markLocation(int k)
@@ -208,6 +205,7 @@ public class BattleshipApp extends GameGrid
         break;
       case 2: // sunk
         addActor(new Actor("sprites/sunk.gif"), currentLoc);
+        bonus += 20;
         break;
       case 3: // allsunk
         isOver = true;
@@ -220,28 +218,34 @@ public class BattleshipApp extends GameGrid
     }
   }
 
-  private void connect()
+  private void connect(boolean client)
   {
 	vgame = new Vokabelspiel(ulx,uly);  
-    String prompt = "Enter Bluetooth Name";
-    String serverName;
-    do
-    {
-      serverName = JOptionPane.showInputDialog(null, prompt, "");
-      if (serverName == null)
-        System.exit(0);
-    }
-    while (serverName.trim().length() == 0);
+	if(client) {
+	    String prompt = "Enter Bluetooth Name";
+	    String serverName;
+	    do
+	    {
+	      serverName = JOptionPane.showInputDialog(null, prompt, "");
+	      if (serverName == null)
+	        System.exit(0);
+	    }
+	    while (serverName.trim().length() == 0);
 
-    setTitle("Connecting to " + serverName);
-    bp = new BluetoothPeer(serverName, serviceName, this, true);
-    if (bp.isConnected())
-    {
-      setTitle("Connect OK. You shoot now");
-      isMyMove = true;  // Client has first move
-    }
-    else
-      setTitle("Waiting as server " + BluetoothFinder.getLocalBluetoothName());
+	    setTitle("Connecting to " + serverName);
+	    bp = new BluetoothPeer(serverName, serviceName, this, true);
+	    if (bp.isConnected())
+	    {
+	      setTitle("Connect OK. You shoot now");
+	      isMyMove = true;  // Client has first move
+	    }
+	    else
+	      setTitle("Waiting as server " + BluetoothFinder.getLocalBluetoothName());
+	}
+	else {
+		bp = new BluetoothPeer(null, serviceName, this, true);
+		setTitle("Waiting as server " + BluetoothFinder.getLocalBluetoothName());
+	}
   }
 
   public void notifyConnection(boolean connected)
@@ -259,29 +263,39 @@ public class BattleshipApp extends GameGrid
   }
   
   public void getReady() {
-		 fenster = new JDialog();
+	     vgame.Running = true;
+	     readyPopUp = new JDialog();
 		 knopf = new JButton("Ready ?");
 		 knopf.setSize(100,100);
 		 knopf.addActionListener(this);
-		 fenster.setLocation(ulx, uly);
-		 fenster.setTitle("1 vs 1 Vokabelspiel");
-		 fenster.setSize(200,200);
-		 fenster.setModal(true);
-		 fenster.add(knopf);
-		 fenster.setVisible(true);   
+		 readyPopUp.setLocation(ulx, uly);
+		 readyPopUp.setTitle("1 vs 1 Vokabelspiel");
+		 readyPopUp.setSize(200,200);
+		 readyPopUp.setModal(false);
+		 readyPopUp.add(knopf);
+		 readyPopUp.setVisible(true);
+		 System.out.println("getReady()&Running=true");
   }
  
   public void receiveDataBlock(int[] data)
   {
-	  if(data.length == 1 && !Vokabelspiel.Go && data[0] == 10) {
-			  Vokabelspiel.Go = true;
-			  	getReady();
+	  if(data[0] == 10) {
+		  System.out.println("EMPFANGEN: data == 10");
+	    	  vgame.Go = true;
+			  getReady();
 	  }
-	  if(data.length == 1 && Vokabelspiel.Go) {
-		  switch(data[0]) {
+	  else if(vgame.isRunning()) {
+		  switch(data[0]) 
+		  {
 		  case 2: 
-			  fenster.dispose();
+			  System.out.println("EMPFANGEN: data =2");
+			  readyPopUp.dispose();
 			  data[0] = vgame.play();
+			  if(data[0] == 0 && bp.isServer())
+			  {
+				  data[0] = vgame.play();
+			  }
+			  System.out.println("Sende: "+data[0]);
 			  bp.sendDataBlock(data);
 			  break;
 		  case 3: 
@@ -291,7 +305,7 @@ public class BattleshipApp extends GameGrid
 			  win.dispose();  
 			  data[0] = 4;
 			  bp.sendDataBlock(data);
-			  Vokabelspiel.Go = false;
+			  vgame.Running = false;
 			  break;
 		  case 4:  
 			  StatusDialog loss = new StatusDialog(ulx, uly, true);
@@ -316,7 +330,7 @@ public class BattleshipApp extends GameGrid
 				  senden[1] = loc.y;
 			  }
 			  bp.sendDataBlock(senden);
-			  Vokabelspiel.Go = false;
+			  vgame.Running = false;
 			  break;
 		  }
 	  }
@@ -329,7 +343,6 @@ public class BattleshipApp extends GameGrid
 	  }
 	  else 
 	  {
-	  
 		  if (isMyMove)
 		    {
 		      markLocation(data[0]);
@@ -338,16 +351,15 @@ public class BattleshipApp extends GameGrid
 		        isMyMove = false;
 		        setTitle(msgYourMove);
 		        turns();
-		        if(turnnumber%10 != 0 && !vgameplay) {
-		        	vgameplayround = (int)Math.random()*10;
-		        	vgameplay = true;
+		        if(bp.isServer()) {
+			        if(turnnumber%10 == 1 && vgame.gameround==0) {
+			        	vgame.gameround = (int)(Math.random()*5+3);
+			        	System.out.println("VGAME Runde"+vgame.gameround);
+			        }
 		        }
-		        if(turnnumber == vgameplayround) {
-		        	getReady();
-		        }
-		        if(turnnumber % 10 == 0) {
-		        	vgameplay = false;
-		        }
+		        if(turnnumber == vgame.gameround && bp.isServer()) {
+			      	getReady();
+			      }
 		      }
 		    }
 		    else
@@ -365,14 +377,14 @@ public class BattleshipApp extends GameGrid
 		        setMouseEnabled(true);
 		      }
 		    }
-	  }
+	    }
 	  }
   
   public void mainMenue() {
-	  int buttonx = 200;
-	  int buttony = 50;
-	  	 fenster = new JDialog();
-	  	 fenster.setLayout(null);
+	  	 int buttonx = 200;
+	  	 int buttony = 50;
+	  	 menu = new JDialog();
+	  	 menu.setLayout(null);
 		 server.setSize(buttonx,buttony);
 		 client.setSize(buttonx,buttony);
 		 sprache.setSize(buttonx,buttony);
@@ -385,15 +397,16 @@ public class BattleshipApp extends GameGrid
 		 client.addActionListener(this);
 		 sprache.addActionListener(this);
 		 exit.addActionListener(this);
-		 fenster.setLocation(ulx, uly);
-		 fenster.setTitle("1 vs 1 Vokabelspiel - Hauptmenü");
-		 fenster.setSize(300,300);
-		 fenster.setModal(false);
-		 fenster.add(server);
-		 fenster.add(client);
-		 fenster.add(sprache);
-		 fenster.add(exit);
-		 fenster.setVisible(true);
+		 menu.setLocation(ulx, uly);
+		 menu.setTitle("1 vs 1 Vokabelspiel - Hauptmenü");
+		 menu.setSize(300,300);
+		 menu.setModal(false);
+		 menu.setDefaultCloseOperation(0);
+		 menu.add(server);
+		 menu.add(client);
+		 menu.add(sprache);
+		 menu.add(exit);
+		 menu.setVisible(true);
   }
   
   public void turns() {
@@ -409,6 +422,7 @@ public class BattleshipApp extends GameGrid
 	    addActor(hitcounter, new Location(1,12));
 	    Scoreboard();
   }
+  
   public void Scoreboard() {
 		if (turnnumber <= 10) {
 			points =  10;
@@ -419,61 +433,57 @@ public class BattleshipApp extends GameGrid
 		if (turnnumber > 20) {
 			points = 2;
 		}
-		bonus = getBonus();
 		score = score + points + bonus;
 		Actor highscore = new TextActor("Score" + Integer.toString(score), java.awt.Color.BLACK, java.awt.Color.WHITE, this.font);
 		addActor(highscore, new Location(1,13));
 	}
   
-  public int getBonus() {
-	  ArrayList<Actor> sunken = getActors();
-	  bonus = (sunken.size() - fleet.length + airborne.length) * 20;
-	return bonus;
-	  
-  }
   private int createReply(Location loc)
-  {
-	  if (loc.x < 11) {
-	    for (Actor a : getActors(Ship.class))
-	    {
-	      String s = ((Ship)a).hit(loc);
-	      if (s.equals("hit"))
-	        return 1;
-	      if (s.equals("sunk"))
-	        return 2;
-	      if (s.equals("allSunk"))
-	      {
-	        isOver = true;
-	        removeAllActors();
-	        addActor(new Actor("sprites/gameover.gif"), new Location(5, 2));
-	        addActor(new Actor("sprites/allsunk.gif"), new Location(5, 6));
-	        setTitle("Game over. You lost");
-	        return 3;
-	      }
-	    }
-	    } if (loc.x > 10) {
-	    	 for (Actor a : getActors(Airforce.class))
-	    	    {
-	    	      String s = ((Airforce)a).hit(loc);
-	    	      if (s.equals("hit"))
-	    	        return 1;
-	    	      if (s.equals("sunk"))
-	    	        return 2;
-	    	      if (s.equals("allSunk"))
-	    	      {
-	    	        isOver = true;
-	    	        removeAllActors();
-	    	        addActor(new Actor("sprites/gameover.gif"), new Location(5, 2));
-	    	        addActor(new Actor("sprites/allsunk.gif"), new Location(5, 6));
-	    	        setTitle("Game over. You lost");
-	    	        return 3;
-	    	      }
-	    }
-	    }
+  { 
+	  	if (loc.x < 10) {
+	  		for (Actor a : getActors(Ship.class))
+	  		{
+	  			String s = ((Ship)a).hit(loc);
+	  			if (s.equals("hit"))
+	  				return 1;
+	  			if (s.equals("sunk")) {	
+	  				++casualties;
+	  				if (casualties == 10) {
+	  					isOver = true;
+		  				removeAllActors();
+		  				addActor(new Actor("sprites/gameover.gif"), new Location(5, 2));
+		  				addActor(new Actor("sprites/allsunk.gif"), new Location(5, 6));
+		  				setTitle("Game over. You lost");
+		  				return 3;
+	  				}
+	  				return 2;
+	  			}	
+	  		}
+	  	} if (loc.x > 10) {
+	  		for (Actor a : getActors(Airforce.class))
+	  		{
+	  			String s = ((Airforce)a).hit(loc);
+	  			if (s.equals("hit"))
+	  				return 1;
+	  			if (s.equals("sunk"))
+	  				++casualties;
+  					if (casualties == 10) {
+  						isOver = true;
+  						removeAllActors();
+  						addActor(new Actor("sprites/gameover.gif"), new Location(5, 2));
+  						addActor(new Actor("sprites/allsunk.gif"), new Location(5, 6));
+  						setTitle("Game over. You lost");
+  						return 3;
+  					}	
+  					return 2;
+
+	  		}
+	  	}
 	    // miss
 	    addActor(new Water(), loc);
 	    return 0;
   }
+
 
   public boolean notifyExit()
   {
@@ -487,68 +497,74 @@ public class BattleshipApp extends GameGrid
   }
   @Override
 
-public void buttonClicked(GGButton kamikaze) {
-	if (isMyMove = true) {
-		System.out.println("Check");
-		ArrayList<Actor> zeros = getActors(Plane.class);
-		Location loczero = zeros.get(0).getLocation();
-		int dirzero = zeros.get(0).getIntDirection();
-		if (dirzero == 0) {
-			int[] impact = 
-				{
-						loczero.x, loczero.y, loczero.x + 1, loczero.y
-				};
-				createReply(loczero);
-				createReply(new Location(loczero.x + 1, loczero.y));
-				bp.sendDataBlock(impact);
+  public void buttonClicked(GGButton kamikaze) {
+		if (isMyMove = true) {
+			System.out.println("Check");
+			ArrayList<Actor> zeros = getActors(Plane.class);
+			Location loczero = zeros.get(0).getLocation();
+			int dirzero = zeros.get(0).getIntDirection();
+			if (dirzero == 0) {
+				int[] impact = 
+					{
+							loczero.x, loczero.y, loczero.x + 1, loczero.y
+					};
+					createReply(loczero);
+					System.out.print("check kamikaze 1");
+					createReply(new Location(loczero.x + 1, loczero.y));
+					System.out.print("check kamikaze 2");
+					bp.sendDataBlock(impact);
+					System.out.print("check kamikaze 3");
+			}
+			if (dirzero == 90) {
+				int[] impact = 
+					{
+							loczero.x, loczero.y, loczero.x, loczero.y + 1
+					}; 
+			  		createReply(loczero);
+			  		createReply(new Location(loczero.x, loczero.y + 1));
+			  		bp.sendDataBlock(impact);
+					System.out.print("check kamikaze 4");
+			}
+			if (dirzero == 180) {
+				int[] impact = 
+					{
+							loczero.x, loczero.y, loczero.x - 1, loczero.y
+					}; 
+			  		createReply(loczero);
+			  		createReply(new Location(loczero.x - 1, loczero.y));
+			  		bp.sendDataBlock(impact);
+					System.out.print("check kamikaze 5");
+			}
+			if (dirzero == 270) {
+				int[] impact = 
+					{
+							loczero.x, loczero.y, loczero.x, loczero.y - 1
+					}; 
+					createReply(loczero);
+					createReply(new Location(loczero.x, loczero.y - 1));
+					bp.sendDataBlock(impact);
+					System.out.print("check kamikaze 5");
+			}
+			markLocation(4);
+		// TODO Auto-generated method stub
+		
+		} else {
+			Actor error = new TextActor("Not your Move!", BLACK, WHITE, font);
+			addActor(error, new Location(5,10));
 		}
-		if (dirzero == 90) {
-			int[] impact = 
-				{
-						loczero.x, loczero.y, loczero.x, loczero.y + 1
-				}; 
-		  		createReply(loczero);
-		  		createReply(new Location(loczero.x, loczero.y + 1));
-		  		bp.sendDataBlock(impact);
-		}
-		if (dirzero == 180) {
-			int[] impact = 
-				{
-						loczero.x, loczero.y, loczero.x - 1, loczero.y
-				}; 
-		  		createReply(loczero);
-		  		createReply(new Location(loczero.x - 1, loczero.y));
-		  		bp.sendDataBlock(impact);
-		}
-		if (dirzero == 270) {
-			int[] impact = 
-				{
-						loczero.x, loczero.y, loczero.x, loczero.y - 1
-				}; 
-				createReply(loczero);
-				createReply(new Location(loczero.x, loczero.y - 1));
-				bp.sendDataBlock(impact);
-		}
-		markLocation(4);
-	// TODO Auto-generated method stub
-	
-	} else {
-		Actor error = new TextActor("Not your Move!", BLACK, WHITE, font);
-		addActor(error, new Location(5,10));
 	}
-}
 
-@Override
-public void buttonPressed(GGButton arg0) {
-	// TODO Auto-generated method stub
-	
-}
+	@Override
+	public void buttonPressed(GGButton arg0) {
+		// TODO Auto-generated method stub
+		
+	}
 
-@Override
-public void buttonReleased(GGButton arg0) {
-	// TODO Auto-generated method stub
-	
-}
+	@Override
+	public void buttonReleased(GGButton arg0) {
+		// TODO Auto-generated method stub
+		
+	}
 
 
-}
+	}

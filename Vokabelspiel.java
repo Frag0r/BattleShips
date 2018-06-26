@@ -17,10 +17,10 @@ class Vokabelspiel implements ActionListener
 private Wörter[] wortListe;
 private int difficulty;
 private int wortWahl;
+public int gameround=0;
 private JDialog fenster;
-private JButton knopf;
 private JLabel anzeigetext;
-public static boolean Go;
+public boolean Go,Running;
 public static String filename;
 private Timer timer;
 private long startTime = -1;
@@ -64,13 +64,12 @@ public static void menu() {
     
     JList displayList = new JList(dateiliste);
     JScrollPane listeFenster = new JScrollPane(displayList);
-    JFrame f = new JFrame("Sprachdatei-Explorer");
+    JFrame f = new JFrame("Sprachfiles");
     
-    displayList.addMouseListener(new MouseAdapter() {
+     displayList.addMouseListener(new MouseAdapter() {
         public void mouseClicked(MouseEvent evt) {
             JList list = (JList)evt.getSource();
             if (evt.getClickCount() == 2) {
-                // Double-click detected
                 int index = list.locationToIndex(evt.getPoint());
                 switch(JOptionPane.showConfirmDialog(listeFenster, "Wollen Sie die Datei "+dateiliste[index]+" wirklich laden ?")) {
                 case 0:
@@ -90,13 +89,14 @@ public static void menu() {
      displayList.setLayoutOrientation(javax.swing.JList.VERTICAL_WRAP);
      displayList.setName("displayList");
      displayList.setVisibleRowCount(-1);
-     f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+     f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
      f.setSize(250, 200);
      f.add(listeFenster);
      f.setVisible(true);
 }
+
 public int play() {
-	if(Vokabelspiel.Go) {
+	if(Go) {
 		setDifficulty(0);
 		fenster = new JDialog();
 		fenster.setTitle("COUNTDOWN");
@@ -110,25 +110,27 @@ public int play() {
 		startTimer();
 		fenster.add(anzeigetext);
 		fenster.pack();
-		fenster.setVisible(true);   
-		Vokabelspiel.Go = false;
-	}
+		fenster.setVisible(true);  
+		Go = false;
+		return 0;
+    }
+	else {
 	String antwort;
 	timer = new Timer(10, this);
 	timer.setInitialDelay(0);
     startTimer();
     fenster.setModal(false);
     fenster.setVisible(true); 
-	do 
-	{
-	antwort = JOptionPane.showInputDialog(fenster, getRandomWort(), "");
-	} while(!this.getResult(antwort) && timer.isRunning());
-	if(antwort == null) {
-		return 3;
-	}
-	else {
-	timer.stop();
-	return 2;
+	do {
+		antwort = JOptionPane.showInputDialog(fenster, getRandomWort(), "");
+	}while(!this.getResult(antwort) && timer.isRunning());
+		if(antwort == null) {
+			return 3;
+		}
+		else {
+			timer.stop();
+			return 2;
+		}
 	}
 }
 private String getRandomWort() {
@@ -155,10 +157,8 @@ public int getWortwahl() {
 @Override
 public void actionPerformed(ActionEvent e) {
 	// TODO Auto-generated method stub
-	if(e.getSource() == knopf){
-		startTimer();
-	}
 	if(e.getSource() == timer) {
+		
 		long now = System.currentTimeMillis();
 	    long clockTime = now - startTime;
 		SimpleDateFormat df = new SimpleDateFormat("mm:ss:SSS");
@@ -190,6 +190,10 @@ public void startTimer() {
         timer.start();
     }
 }
+public boolean isRunning() {
+	return Running;
+}
+
 }
 class TextFileFilter implements FileFilter {
     public boolean accept(File file) {

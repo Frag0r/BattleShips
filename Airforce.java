@@ -32,8 +32,10 @@ public abstract class Airforce extends Actor
   }
   public boolean mouseEvent(GGMouse mouse)
   {
-    if (!isMouseEnabled)
-      return false;
+	    System.out.println("Mouse"+mouse);
+	    System.out.println("Grid"+gameGrid);
+	        if ((!isMouseEnabled) || (mouse==null) || (gameGrid==null))  return false;
+
     Location location = gameGrid.toLocationInGrid(mouse.getX(), mouse.getY());
     switch (mouse.getEvent())
     {
@@ -196,14 +198,15 @@ private int getStatus()
       allHit = allHit && isHit[i];  // false, if one or more locs are not hit
     if (allHit)
     {
+    	System.out.println("removing me");
       removeSelf();
       for (int i = 0; i < size; i++)
-        gameGrid.removeActorsAt(cells[i], Fire.class);
-      if (gameGrid.getNumberOfActors(Ship.class) == 0 && gameGrid.getNumberOfActors(Airforce.class) == 0)
+  //      gameGrid.removeActorsAt(cells[i], Fire.class);
+    /*  if (gameGrid.getNumberOfActors(Ship.class) == 0 && gameGrid.getNumberOfActors(Airforce.class) == 0)
       {
        
         return 2;
-      }
+      } */
       return 1;
     }
     return 0;

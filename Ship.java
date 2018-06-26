@@ -198,12 +198,12 @@ public abstract class Ship extends Actor
     {
       removeSelf();
       for (int i = 0; i < size; i++)
-        gameGrid.removeActorsAt(cells[i], Fire.class);
-      if (gameGrid.getNumberOfActors(Ship.class) == 0 && gameGrid.getNumberOfActors(Airforce.class) == 0)
+//        gameGrid.removeActorsAt(cells[i], Fire.class);
+ /*     if (gameGrid.getNumberOfActors(Ship.class) == 0 && gameGrid.getNumberOfActors(Airforce.class) == 0)
       {
        
         return 2;
-      }
+      }*/
       return 1;
     }
     return 0;
