@@ -18,13 +18,14 @@ private Wörter[] wortListe;
 private int difficulty;
 private int wortWahl;
 public int gameround=0;
+private long TimeBuffer;
 private JDialog fenster;
 private JLabel anzeigetext;
 public boolean Go,Running;
 public static String filename;
 private Timer timer;
 private long startTime = -1;
-private long duration = 3000;
+private long duration;
 private File sprachDatei;
 public final int ulx,uly;
 
@@ -58,7 +59,7 @@ public Vokabelspiel(int x, int y){
         e.printStackTrace();
     }
 } 
-public static void menu() {
+public static void menu(int x,int y) {
 	File ordner=new File(".");
     File[]dateiliste=ordner.listFiles(new TextFileFilter());
     
@@ -91,18 +92,22 @@ public static void menu() {
      displayList.setVisibleRowCount(-1);
      f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
      f.setSize(250, 200);
+     f.setAlwaysOnTop(true);
+     f.setUndecorated(true);
+     f.setLocation(x, y);
      f.add(listeFenster);
      f.setVisible(true);
 }
 
 public int play() {
 	if(Go) {
+		duration = 3000;
 		setDifficulty(0);
 		fenster = new JDialog();
 		fenster.setTitle("COUNTDOWN");
 		fenster.setSize(200,200);
 		fenster.setModal(true);
-		fenster.setLocation(ulx, uly);
+		fenster.setLocation(ulx+48, uly+263);
 		anzeigetext = new JLabel();
 		anzeigetext.setText("Timer");
 		timer = new Timer(10, this);
@@ -122,12 +127,15 @@ public int play() {
     fenster.setModal(false);
     fenster.setVisible(true); 
 	do {
-		antwort = JOptionPane.showInputDialog(fenster, getRandomWort(), "");
+		antwort = JOptionPane.showInputDialog(fenster, getRandomWort(), "Vokabelspiel");
 	}while(!this.getResult(antwort) && timer.isRunning());
 		if(antwort == null) {
+			startTime = -1;
 			return 3;
 		}
 		else {
+			startTime = -1;
+			duration = TimeBuffer;
 			timer.stop();
 			return 2;
 		}
@@ -161,6 +169,7 @@ public void actionPerformed(ActionEvent e) {
 		
 		long now = System.currentTimeMillis();
 	    long clockTime = now - startTime;
+	    TimeBuffer = duration - clockTime;
 		SimpleDateFormat df = new SimpleDateFormat("mm:ss:SSS");
 		anzeigetext.setText(df.format(duration - clockTime));
 		if((clockTime*2 == duration)) {
